@@ -67,7 +67,6 @@ func decodeRFCString(subject string) string {
 	var err error
 
 	subCharset, encodeType, content := splitSubject(subject)
-
 	//decode by base64 or quoted-print
 	switch encodeType {
 	case "B":
@@ -98,6 +97,8 @@ func decodeRFCString(subject string) string {
 	} else if strings.ToUpper(subCharset) == "GBK" {
 		decodeBytes, _ := simplifiedchinese.GBK.NewDecoder().Bytes(dataBytes)
 		strRet = string(decodeBytes)
+	} else if subCharset == "" { // default to decode as utf-8
+		strRet = string(dataBytes)
 	}
 
 	if err != nil {

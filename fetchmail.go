@@ -1,22 +1,19 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"mime"
-	"mime/multipart"
-	"net/mail"
 	"os"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/mxk/go-imap/imap"
+	"github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
+	"github.com/emersion/go-message/mail"
 )
 
 //MailFetchConfig 包含了下载配置信息的结构体遍历
@@ -24,20 +21,6 @@ var MailFetchConfig TagClassInfo
 
 //MAXMAILS 表示遍历邮件的最大数目
 var MAXMAILS uint32 = 40
-
-//getTimeFromDateString 解析mail中日期字符串得到time对象
-func getTimeFromDateString(strDate string) time.Time {
-
-	nIndexBracket := strings.Index(strDate, "(")
-	if nIndexBracket != -1 {
-		strDate = strDate[:nIndexBracket-1]
-	}
-	//获取本地location
-	loc, _ := time.LoadLocation("Local")
-	theTime, _ := time.ParseInLocation("Mon, _2 Jan 2006 15:04:05 -0700", strDate, loc)
-
-	return theTime
-}
 
 //RemoveStuName Remove Student's Name from VIOLATELIST
 func removeStuName(stuName string) {
@@ -75,164 +58,116 @@ func saveViolates2Sqlite() {
 	}
 }
 
-func myPraseAttachMent(part *multipart.Part) {
-	myMediaType, myParams, err := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
+func downloadAttach(c *client.Client, downloadSet *imap.SeqSet) {
+	// Get the whole message body
+	section := &imap.BodySectionName{}
+	items := []imap.FetchItem{section.FetchItem()}
 
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	filename := decodeMailSubject(myParams["filename"])
-	enocdeType := part.Header.Get("Content-Transfer-Encoding")
+	messages := make(chan *imap.Message, 10)
+	done := make(chan error, 1)
+	go func() {
+		done <- c.Fetch(downloadSet, items, messages)
+	}()
+	for msg := range messages {
 
-	//保存作业
-	fileBytes, _ := ioutil.ReadAll(part)
-	file, err := os.Create(path.Join(MailFetchConfig.homeworkPath, filename))
-	fmt.Println(path.Join(MailFetchConfig.homeworkPath, filename))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+		r := msg.GetBody(section)
+		mr, err := mail.CreateReader(r)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	data, _ := base64.StdEncoding.DecodeString(string(fileBytes))
-	file.Write(data)
-	fmt.Println("已保存:", myMediaType, filename, enocdeType, "\r\n")
-
-	splits := strings.Split(filename, "_")
-	if len(splits) == 3 {
-		removeStuName(splits[1])
-	}
-
-}
-
-func myParseMailMsg(msg *mail.Message) {
-	header := msg.Header
-
-	mediaType, params, err := mime.ParseMediaType(header.Get("Content-Type"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if strings.HasPrefix(mediaType, "multipart/") {
-		mr := multipart.NewReader(msg.Body, params["boundary"])
-
-		for i := 0; ; i++ {
-			part, err := mr.NextPart()
-			//fmt.Println("--------Multi-Part:", i, "-------")
+		// Read each mail's part
+		for {
+			p, err := mr.NextPart()
 			if err == io.EOF {
-				return
-			}
-			if err != nil {
+				break
+			} else if err != nil {
 				log.Fatal(err)
 			}
 
-			//只下一个附件
-			if part.Header.Get("Content-Disposition") != "" {
-				myPraseAttachMent(part)
-				return
-			}
-		}
-	}
-}
+			switch h := p.Header.(type) {
+			case *mail.AttachmentHeader:
+				filename, _ := h.Filename()
 
-func downloadAttach(seqSet *imap.SeqSet, cmd *imap.Command, client *imap.Client) {
-	// Fetch the headers of the 3 most recent messages
-	cmd, _ = client.Fetch(seqSet, "BODY[]")
-
-	// Process responses while the command is running
-	for cmd.InProgress() {
-		// Wait for the next response (no timeout)
-		client.Recv(-1)
-
-		// Process command data
-		for _, rsp := range cmd.Data {
-			msgIno := rsp.MessageInfo()
-			msgBytes := imap.AsBytes(msgIno.Attrs["BODY[]"])
-
-			if msg, err := mail.ReadMessage(bytes.NewReader(msgBytes)); msg != nil {
+				//保存作业
+				fileBytes, _ := ioutil.ReadAll(p.Body)
+				file, err := os.Create(path.Join(MailFetchConfig.homeworkPath, filename))
+				log.Println(path.Join(MailFetchConfig.homeworkPath, filename))
 				if err != nil {
 					log.Fatal(err)
 				}
+				defer file.Close()
 
-				myParseMailMsg(msg)
+				//data, _ := base64.StdEncoding.DecodeString(string(fileBytes))
+				file.Write(fileBytes)
+				log.Println("已保存:", filename)
+
+				//移除违纪名单
+				splits := strings.Split(filename, "_")
+				if len(splits) == 3 {
+					removeStuName(splits[1])
+				}
 			}
 		}
-		cmd.Data = nil
-
-		// Process unilateral server data
-		for _, rsp := range cmd.Data {
-			fmt.Println("Server data:", rsp)
-		}
-		cmd.Data = nil
 	}
+
 }
-func isMailSatisfied(msgHeader *mail.Header) bool {
-	strSubject := strings.ToUpper(decodeMailSubject(msgHeader.Get("Subject")))
 
-	strDate := msgHeader.Get("Date")
-	mailTime := getTimeFromDateString(strDate)
+func isMailSatisfied(msg *imap.Message) bool {
+	strSubject := strings.ToUpper(decodeMailSubject(msg.Envelope.Subject))
+	mailTime := msg.Envelope.Date
 
-	fmt.Printf("%s: ", strSubject)
 	if isNameCorrect(strSubject, MailFetchConfig.prefixFlag) != true {
-		fmt.Printf("Name Wrong (%s)\r\n", MailFetchConfig.prefixFlag)
+		log.Printf("%s: Name Wrong (%s)\r\n", strSubject, MailFetchConfig.prefixFlag)
 		return false
 	}
-
 	if mailTime.After(MailFetchConfig.DateEnd) || mailTime.Before(MailFetchConfig.DateStart) {
-		fmt.Printf("Time Wrong (%s %s-%s)\r\n", mailTime.Format("200601021504"),
+		log.Printf("%s: Time Wrong (%s %s-%s)\r\n", strSubject, mailTime.Format("200601021504"),
 			MailFetchConfig.DateStart.Format("200601021504"),
 			MailFetchConfig.DateEnd.Format("200601021504"))
 		return false
 	}
 
-	fmt.Println("OK")
+	log.Println(strSubject, "OK")
 	return true
-
 }
 
 //GetMailsSet returns a set contains UID of mails matched requirments
-func getMailsSet(client *imap.Client) (set *imap.SeqSet, err error) {
-	// Fetch the headers of the 3 most recent messages
-	set, err = imap.NewSeqSet("")
-	if client.Mailbox.Messages > MAXMAILS {
-		set.AddRange(client.Mailbox.Messages-MAXMAILS, client.Mailbox.Messages)
-	} else {
-		set.Add("1:*")
+func getMailsSet(client *client.Client) (set *imap.SeqSet) {
+	seqset := new(imap.SeqSet)
+	log.Println("Messages count: ", client.Mailbox().Messages)
+	// Get the last 4 messages
+	mbox := client.Mailbox()
+	from := uint32(1)
+	to := mbox.Messages
+	if mbox.Messages > MAXMAILS {
+		// We're using unsigned integers here, only substract if the result is > 0
+		from = mbox.Messages - MAXMAILS
 	}
-
-	return set, err
+	seqset.AddRange(from, to)
+	return seqset
 }
 
-func getSatisfiedMails(set *imap.SeqSet, cmd *imap.Command, client *imap.Client) *imap.SeqSet {
-	cmd, _ = client.Fetch(set, "RFC822.HEADER")
-	var seqSet imap.SeqSet
+func getSatisfiedMails(c *client.Client, seqset *imap.SeqSet) *imap.SeqSet {
+	items := []imap.FetchItem{imap.FetchEnvelope}
+	messages := make(chan *imap.Message, 10)
+	done := make(chan error, 1)
+	go func() {
+		done <- c.Fetch(seqset, items, messages)
+	}()
 
-	// Process responses while the command is running
-	fmt.Println("\n遍历邮件中...")
-	for cmd.InProgress() {
-		// Wait for the next response (no timeout)
-		client.Recv(-1)
-
-		// Process command data
-		for _, rsp := range cmd.Data {
-			mailInfo := rsp.MessageInfo()
-			header := imap.AsBytes(mailInfo.Attrs["RFC822.HEADER"])
-			if msg, _ := mail.ReadMessage(bytes.NewReader(header)); msg != nil {
-				if isMailSatisfied(&msg.Header) {
-					seqSet.AddNum(mailInfo.Seq)
-				}
-			}
+	downloadset := new(imap.SeqSet)
+	for msg := range messages {
+		if isMailSatisfied(msg) {
+			downloadset.AddNum(msg.SeqNum)
 		}
-		cmd.Data = nil
-
-		// Process unilateral server data
-		for _, rsp := range cmd.Data {
-			fmt.Println("Server data:", rsp)
-		}
-		cmd.Data = nil
 	}
 
-	return &seqSet
+	if err := <-done; err != nil {
+		log.Fatal(err)
+	}
+
+	return downloadset
 }
 
 func saveViolates2Txt() {
@@ -265,7 +200,7 @@ func saveViolates2Txt() {
 	io.WriteString(file, outputText)
 }
 
-func saveViolatStus() {
+func saveViolateStudents() {
 	saveViolates2Txt()
 	saveViolates2Sqlite()
 }
@@ -275,66 +210,37 @@ func createHomeworkPath() {
 	dstPath := path.Join(MailFetchConfig.homeworkPath, MailFetchConfig.prefixFlag, MailFetchConfig.prefixFlag+"_"+time.Now().Format("20060102"))
 	os.MkdirAll(dstPath, 0777)
 	MailFetchConfig.homeworkPath = dstPath
-	fmt.Println("存储路径:", MailFetchConfig.homeworkPath)
+	log.Println("存储路径:", MailFetchConfig.homeworkPath)
 }
 
 func fetchToSaveMails() {
-	//
-	// Note: most of error handling code is omitted for brevity
-	//
-	var (
-		c   *imap.Client
-		cmd *imap.Command
-		rsp *imap.Response
-	)
-
 	// Connect to the server
-	c, _ = imap.Dial(MailFetchConfig.mailserver)
-
-	// Remember to log out and close the connection when finished
-	defer c.Logout(30 * time.Second)
-
-	// Print server greeting (first response in the unilateral server data queue)
-	fmt.Println("Server says hello:", c.Data[0].Info)
-	c.Data = nil
-
-	// Enable encryption, if supported by the server
-	if c.Caps["STARTTLS"] {
-		c.StartTLS(nil)
+	c, err := client.DialTLS(MailFetchConfig.mailserver, nil)
+	if err != nil {
+		log.Fatal(err)
 	}
+	log.Println("Connected to: ", MailFetchConfig.mailserver)
 
 	// Authenticate
-	if c.State() == imap.Login {
-		c.Login(MailFetchConfig.mailUser, MailFetchConfig.mailPassword)
+	if err := c.Login(MailFetchConfig.mailUser, MailFetchConfig.mailPassword); err != nil {
+		log.Fatal(err)
 	}
+	log.Println("Logged in: ", MailFetchConfig.mailUser)
 
-	//List all top-level mailboxes, wait for the command to finish
-	cmd, _ = imap.Wait(c.List("", "%"))
-
-	// Check for new unilateral server data responses
-	for _, rsp = range c.Data {
-		fmt.Println("Server data:", rsp)
+	// Select INBOX
+	mbox, err := c.Select("INBOX", false)
+	if err != nil {
+		log.Fatal(err)
 	}
-	c.Data = nil
+	log.Println("Flags for INBOX:", mbox.Flags)
 
-	// Open a mailbox (synchronous command - no need for imap.Wait)
-	c.Select("INBOX", true)
+	// Get the last messages
+	seqset := getMailsSet(c)
 
-	// Fetch the headers of the 3 most recent messages
-	set, _ := getMailsSet(c)
+	downloadset := getSatisfiedMails(c, seqset)
 
-	setFetchMail := getSatisfiedMails(set, cmd, c)
-
-	fmt.Println("将要下载:", setFetchMail)
-	downloadAttach(setFetchMail, cmd, c)
-
-	if rsp, err := cmd.Result(imap.OK); err != nil {
-		if err == imap.ErrAborted {
-			fmt.Println("Fetch command aborted")
-		} else {
-			fmt.Println("Fetch error:", rsp.Info)
-		}
-	}
+	log.Println("将要下载:", downloadset)
+	downloadAttach(c, downloadset)
 }
 
 //Run starts downloading mails' attachement and classify
@@ -343,5 +249,5 @@ func Run() {
 
 	fetchToSaveMails()
 
-	saveViolatStus()
+	saveViolateStudents()
 }
