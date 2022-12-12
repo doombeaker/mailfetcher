@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,31 +26,6 @@ func removeStuName(stuName string) {
 				MailFetchConfig.VIOLATELIST[i+1:]...)
 			return
 		}
-	}
-}
-
-//SaveViolates2DB Saves violated records
-func saveViolates2Sqlite() {
-
-	//违纪学生存数据库
-	db, err := sql.Open("sqlite3", "./data.db")
-	defer db.Close()
-
-	if err != nil {
-		log.Println(err)
-	}
-
-	for _, item := range MailFetchConfig.VIOLATELIST {
-		stmt, err := db.Prepare(`INSERT INTO violate (clsname, stuname, date) VALUES (?, ?, datetime('now', 'localtime'))`)
-		if err != nil {
-			log.Println(err)
-		} else {
-			_, err := stmt.Exec(MailFetchConfig.className, item)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-
 	}
 }
 
@@ -197,8 +171,10 @@ func saveViolates2Txt() {
 }
 
 func saveViolateStudents() {
+	database_file := "./data.db"
+	createDatabaseIfNeeded(database_file)
 	saveViolates2Txt()
-	saveViolates2Sqlite()
+	saveViolates2Sqlite(database_file)
 }
 
 func createHomeworkPath() {

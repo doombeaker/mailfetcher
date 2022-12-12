@@ -119,7 +119,6 @@ func setConfigs() bool {
 	return true
 }
 func main() {
-
 	if setConfigs() {
 		Run()
 	}
