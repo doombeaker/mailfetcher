@@ -1,7 +1,7 @@
 homework_path=c:\homework    # 所有班级作业将存放至的根目录
 mailserver=example.com:993   # pop邮件服务器地址
-mail_user=username        # 账号
-mail_passwd=password   # 密码
+mail_user=username           # 账号
+mail_passwd=password         # 密码
 prefix_flag=SS1201           # 附件前缀
 maxmail=40                   # 一次最多下载数目
 delimiter=-                  # 邮件主题/附件分隔符
