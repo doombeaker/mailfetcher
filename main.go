@@ -13,14 +13,14 @@ import (
 
 var usageTemplate = `usage:
 	<py> -l
-		List index of classes
+		list configs and related index
 	<py> -i [<start> <end>]
 		interactive mode
 	<py> -d <index> 
 		download mails using default date setting
 		FROM %s TO %s
 	<py> -s <start> <end> <index>
-		download mails using date setting by hand. 
+		download mails using date setting manually
 		eg: <py> -s %s %s 0
 	<py> -h
 		show this
