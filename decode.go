@@ -26,8 +26,8 @@ func splitSubject(strSubject string) (strCharset string, encodeType string, strC
 }
 
 //isNameCorrect checks title's form. eg: NR302_yaochi_20190528CPointer.rar
-func isNameCorrect(titleName string, strPrefix string) bool {
-	splits := strings.Split(titleName, MailFetchConfig.delimiter)
+func isNameCorrect(titleName string, strPrefix string, delimiter string) bool {
+	splits := strings.Split(titleName, delimiter)
 
 	if strings.HasPrefix(titleName, strPrefix) && len(splits) == 3 {
 		return true

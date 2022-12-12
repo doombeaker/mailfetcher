@@ -18,8 +18,8 @@ import (
 //MailFetchConfig 包含了下载配置信息的结构体遍历
 var MailFetchConfig TagClassInfo
 
-//RemoveStuName Remove Student's Name from VIOLATELIST
-func removeStuName(stuName string) {
+//Remove name from VIOLATELIST
+func removeName(stuName string) {
 	for i, item := range MailFetchConfig.VIOLATELIST {
 		if item == stuName {
 			MailFetchConfig.VIOLATELIST = append(MailFetchConfig.VIOLATELIST[:i],
@@ -75,8 +75,9 @@ func downloadAttach(c *client.Client, downloadSet *imap.SeqSet) {
 				//移除违纪名单
 				splits := strings.Split(filename, MailFetchConfig.delimiter)
 				if len(splits) == 3 {
-					removeStuName(splits[1])
+					removeName(splits[1])
 				}
+				break // Only download first attchment
 			}
 		}
 	}
@@ -87,7 +88,7 @@ func isMailSatisfied(msg *imap.Message) bool {
 	strSubject := strings.ToUpper(decodeMailSubject(msg.Envelope.Subject))
 	mailTime := msg.Envelope.Date
 
-	if isNameCorrect(strSubject, MailFetchConfig.prefixFlag) != true {
+	if isNameCorrect(strSubject, MailFetchConfig.prefixFlag, MailFetchConfig.delimiter) != true {
 		log.Printf("%s: Name Wrong (%s)\r\n", strSubject, MailFetchConfig.prefixFlag)
 		return false
 	}
