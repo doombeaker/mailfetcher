@@ -96,3 +96,21 @@ So the following subject or attachment file name meet the requirements:
 SS1201-张三-第一天笔记
 SS1201-张三-第一天笔记.zip
 ```
+
+## View the data of file data.db
+
+The indiscipline cases will be stored to `./data.db` which is a sqlite database file.
+
+The data in `./data.db` can be viewed by sqlite client, such as [SqliteStudio](https://sqlitestudio.pl/), [sqlite-web](https://github.com/coleifer/sqlite-web)
+
+Take sqlite-web as example, run command below to install sqlite-web:
+
+```bash
+pip install sqlite-web
+```
+
+run command below to browse `data.db`:
+
+```bash
+sqlite_web ./data.db
+```
