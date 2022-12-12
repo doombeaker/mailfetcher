@@ -26,8 +26,8 @@ func splitSubject(strSubject string) (strCharset string, encodeType string, strC
 }
 
 //isNameCorrect checks title's form. eg: NR302_yaochi_20190528CPointer.rar
-func isNameCorrect(titleName string, strPrefix string) bool {
-	splits := strings.Split(titleName, "_")
+func isNameCorrect(titleName string, strPrefix string, delimiter string) bool {
+	splits := strings.Split(titleName, delimiter)
 
 	if strings.HasPrefix(titleName, strPrefix) && len(splits) == 3 {
 		return true
@@ -67,7 +67,6 @@ func decodeRFCString(subject string) string {
 	var err error
 
 	subCharset, encodeType, content := splitSubject(subject)
-
 	//decode by base64 or quoted-print
 	switch encodeType {
 	case "B":
@@ -98,6 +97,8 @@ func decodeRFCString(subject string) string {
 	} else if strings.ToUpper(subCharset) == "GBK" {
 		decodeBytes, _ := simplifiedchinese.GBK.NewDecoder().Bytes(dataBytes)
 		strRet = string(decodeBytes)
+	} else if subCharset == "" { // default to decode as utf-8
+		strRet = string(dataBytes)
 	}
 
 	if err != nil {

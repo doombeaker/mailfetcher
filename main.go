@@ -26,8 +26,31 @@ var usageTemplate = `usage:
 		show this
 `
 
-func setConfigs() bool {
-	classOptions := ReadConfigDir("./configsdir")
+// Get the default time range according to current time
+func GetDateRange() (startDate time.Time, endDate time.Time) {
+	nowDate := time.Now()
+
+	if nowDate.Hour() < 12 {
+		startDate = time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day()-1,
+			12, 0, 0, 0, nowDate.Location())
+		endDate = time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(),
+			7, 30, 0, 0, nowDate.Location())
+	} else if nowDate.Hour() > 12 && nowDate.Hour() < 17 {
+		startDate = time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day()-1,
+			17, 0, 0, 0, nowDate.Location())
+		endDate = time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(),
+			12, 30, 0, 0, nowDate.Location())
+	} else {
+		startDate = time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day()-1,
+			21, 30, 0, 0, nowDate.Location())
+		endDate = time.Date(nowDate.Year(), nowDate.Month(), nowDate.Day(),
+			17, 30, 0, 0, nowDate.Location())
+	}
+	return
+}
+
+func prepareConfig() bool {
+	classOptions := ReadConfigDir("./configs")
 
 	dateBegin, dateEnd := GetDateRange()
 	nIndexChoice := -1
@@ -96,8 +119,7 @@ func setConfigs() bool {
 	return true
 }
 func main() {
-
-	if setConfigs() {
+	if prepareConfig() {
 		Run()
 	}
 }
