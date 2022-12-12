@@ -3,8 +3,13 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"os"
+	"path"
+	"strings"
+	"time"
 )
 
 func createDatabaseIfNeeded(DATABASE_FILE string) {
@@ -67,5 +72,53 @@ func saveViolates2Sqlite(DATABASE_FILE string) {
 			}
 		}
 
+	}
+}
+
+func saveViolates2Txt() {
+	//打印违纪名单
+	outputTemplate := `
+	<class>    <date>
+	应交:%d		实交:%d
+
+
+	班级名单:
+	%s
+
+
+	违纪名单:
+	%s
+	`
+	outputTemplate = strings.Replace(outputTemplate, "<class>", MailFetchConfig.className, 1)
+	outputTemplate = strings.Replace(outputTemplate, "<date>", time.Now().Format(time.RFC1123Z), 1)
+	strAll := strings.Join(MailFetchConfig.stuLists, "    ")
+	strViolate := strings.Join(MailFetchConfig.VIOLATELIST, "    ")
+
+	outputText := fmt.Sprintf(outputTemplate, len(MailFetchConfig.stuLists),
+		len(MailFetchConfig.stuLists)-len(MailFetchConfig.VIOLATELIST),
+		strAll, strViolate)
+	fmt.Print(outputText)
+
+	file, _ := os.Create(path.Join(MailFetchConfig.rootPath, "违纪统计.txt"))
+	defer file.Close()
+
+	io.WriteString(file, outputText)
+}
+
+func recordLogs() {
+	database_file := "./data.db"
+	createDatabaseIfNeeded(database_file)
+	saveViolates2Txt()
+	saveViolates2Sqlite(database_file)
+}
+
+//Remove name from VIOLATELIST
+func removeName(stuName string) {
+	for i, item := range MailFetchConfig.VIOLATELIST {
+		if item == stuName {
+			MailFetchConfig.VIOLATELIST = append(MailFetchConfig.VIOLATELIST[:i],
+				MailFetchConfig.VIOLATELIST[i+1:]...)
+			return
+		}
 	}
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,25 +14,14 @@ import (
 	"github.com/emersion/go-message/mail"
 )
 
-//MailFetchConfig 包含了下载配置信息的结构体遍历
+//MailFetchConfig refered to config txt file
 var MailFetchConfig TagClassInfo
-
-//Remove name from VIOLATELIST
-func removeName(stuName string) {
-	for i, item := range MailFetchConfig.VIOLATELIST {
-		if item == stuName {
-			MailFetchConfig.VIOLATELIST = append(MailFetchConfig.VIOLATELIST[:i],
-				MailFetchConfig.VIOLATELIST[i+1:]...)
-			return
-		}
-	}
-}
 
 func downloadAttach(c *client.Client, downloadSet *imap.SeqSet) {
 	// Get the whole message body
 	section := &imap.BodySectionName{}
 	items := []imap.FetchItem{section.FetchItem()}
-	log.Println("保存至: ", MailFetchConfig.homeworkPath)
+	log.Println("保存至: ", MailFetchConfig.rootPath)
 	messages := make(chan *imap.Message, 10)
 	done := make(chan error, 1)
 	go func() {
@@ -47,7 +35,6 @@ func downloadAttach(c *client.Client, downloadSet *imap.SeqSet) {
 			log.Fatal(err)
 		}
 
-		// Read each mail's part
 		for {
 			p, err := mr.NextPart()
 			if err == io.EOF {
@@ -60,19 +47,18 @@ func downloadAttach(c *client.Client, downloadSet *imap.SeqSet) {
 			case *mail.AttachmentHeader:
 				filename, _ := h.Filename()
 
-				//保存作业
 				fileBytes, _ := ioutil.ReadAll(p.Body)
-				file, err := os.Create(path.Join(MailFetchConfig.homeworkPath, filename))
+				file, err := os.Create(path.Join(MailFetchConfig.rootPath, filename))
 				if err != nil {
 					log.Fatal(err)
 				}
 				defer file.Close()
 
-				//data, _ := base64.StdEncoding.DecodeString(string(fileBytes))
+				// Save file
 				file.Write(fileBytes)
 				log.Println("已保存:", filename)
 
-				//移除违纪名单
+				// Remove name form violating list
 				splits := strings.Split(filename, MailFetchConfig.delimiter)
 				if len(splits) == 3 {
 					removeName(splits[1])
@@ -103,12 +89,12 @@ func isMailSatisfied(msg *imap.Message) bool {
 	return true
 }
 
-//GetMailsSet returns a set contains UID of mails matched requirments
+// Returns a set contains all mails avaliable
 func getMailsSet(client *client.Client) (set *imap.SeqSet) {
 	seqset := new(imap.SeqSet)
 	log.Println("Messages count: ", client.Mailbox().Messages)
-	// Get the last 4 messages
 	mbox := client.Mailbox()
+
 	from := uint32(1)
 	to := mbox.Messages
 	if mbox.Messages > MailFetchConfig.MAXMAILS {
@@ -119,6 +105,7 @@ func getMailsSet(client *client.Client) (set *imap.SeqSet) {
 	return seqset
 }
 
+// Return a set contains all mails meeting the time and name requirements
 func getSatisfiedMails(c *client.Client, seqset *imap.SeqSet) *imap.SeqSet {
 	items := []imap.FetchItem{imap.FetchEnvelope}
 	messages := make(chan *imap.Message, 10)
@@ -141,52 +128,15 @@ func getSatisfiedMails(c *client.Client, seqset *imap.SeqSet) *imap.SeqSet {
 	return downloadset
 }
 
-func saveViolates2Txt() {
-	//打印违纪名单
-	outputTemplate := `
-	<class>    <date>
-	应交:%d		实交:%d
-
-
-	班级名单:
-	%s
-
-
-	违纪名单:
-	%s
-	`
-	outputTemplate = strings.Replace(outputTemplate, "<class>", MailFetchConfig.className, 1)
-	outputTemplate = strings.Replace(outputTemplate, "<date>", time.Now().Format(time.RFC1123Z), 1)
-	strAll := strings.Join(MailFetchConfig.stuLists, "    ")
-	strViolate := strings.Join(MailFetchConfig.VIOLATELIST, "    ")
-
-	outputText := fmt.Sprintf(outputTemplate, len(MailFetchConfig.stuLists),
-		len(MailFetchConfig.stuLists)-len(MailFetchConfig.VIOLATELIST),
-		strAll, strViolate)
-	fmt.Print(outputText)
-
-	file, _ := os.Create(path.Join(MailFetchConfig.homeworkPath, "违纪统计.txt"))
-	defer file.Close()
-
-	io.WriteString(file, outputText)
-}
-
-func saveViolateStudents() {
-	database_file := "./data.db"
-	createDatabaseIfNeeded(database_file)
-	saveViolates2Txt()
-	saveViolates2Sqlite(database_file)
-}
-
-func createHomeworkPath() {
-	//创建存储路径
-	dstPath := path.Join(MailFetchConfig.homeworkPath, MailFetchConfig.prefixFlag, MailFetchConfig.prefixFlag+"_"+time.Now().Format("20060102"))
+func createRootPath() {
+	// Create the root path for storing the attchments
+	dstPath := path.Join(MailFetchConfig.rootPath, MailFetchConfig.prefixFlag, MailFetchConfig.prefixFlag+"_"+time.Now().Format("20060102"))
 	os.MkdirAll(dstPath, 0777)
-	MailFetchConfig.homeworkPath = dstPath
-	log.Println("存储路径:", MailFetchConfig.homeworkPath)
+	MailFetchConfig.rootPath = dstPath
+	log.Println("存储路径:", MailFetchConfig.rootPath)
 }
 
-func fetchToSaveMails() {
+func connect2Server() *client.Client {
 	// Connect to the server
 	c, err := client.DialTLS(MailFetchConfig.mailserver, nil)
 	if err != nil {
@@ -206,21 +156,25 @@ func fetchToSaveMails() {
 		log.Fatal(err)
 	}
 	log.Println("Flags for INBOX:", mbox.Flags)
+	return c
+}
 
-	// Get the last messages
+func downloadMails() {
+	c := connect2Server()
+	// Get all avaliable messages by header info
 	seqset := getMailsSet(c)
-
 	downloadset := getSatisfiedMails(c, seqset)
 
+	// Download attchment whose mail is OK
 	log.Println("将要下载:", downloadset)
 	downloadAttach(c, downloadset)
 }
 
 //Run starts downloading mails' attachement and classify
 func Run() {
-	createHomeworkPath()
+	createRootPath()
 
-	fetchToSaveMails()
+	downloadMails()
 
-	saveViolateStudents()
+	recordLogs()
 }

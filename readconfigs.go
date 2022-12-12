@@ -16,7 +16,7 @@ import (
 //TagClassInfo 存储配置信息
 type TagClassInfo struct {
 	className    string
-	homeworkPath string
+	rootPath     string
 	mailserver   string
 	mailUser     string
 	mailPassword string
@@ -62,7 +62,7 @@ LabelReadOptions:
 
 		switch key {
 		case "homework_path":
-			currentClassInfo.homeworkPath = value
+			currentClassInfo.rootPath = value
 		case "mailserver":
 			currentClassInfo.mailserver = value
 		case "mail_user":

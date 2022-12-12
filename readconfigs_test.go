@@ -17,8 +17,8 @@ func TestReadConfig(t *testing.T) {
 		t.Errorf("config.delimiter expected '-', but %s got", config.delimiter)
 	}
 
-	if config.homeworkPath != "c:\\homework" {
-		t.Errorf("config.homeworkPath expected 'c:\\homework', but %s got", config.homeworkPath)
+	if config.rootPath != "c:\\homework" {
+		t.Errorf("config.homeworkPath expected 'c:\\homework', but %s got", config.rootPath)
 	}
 
 	if config.mailUser != "username" {
