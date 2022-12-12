@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,6 +21,8 @@ type TagClassInfo struct {
 	mailUser     string
 	mailPassword string
 	prefixFlag   string
+	MAXMAILS     uint32
+	delimiter    string
 	stuLists     []string
 	DateStart    time.Time
 	DateEnd      time.Time
@@ -35,8 +38,6 @@ func (clsInfo *TagClassInfo) ClassName() string {
 func readConfig(txtPath string, classConfigs *[]TagClassInfo) {
 	var currentClassInfo TagClassInfo
 
-	//fmt.Println("read configs from: ", txtPath)
-
 	file, err := os.Open(txtPath)
 	if err != nil {
 		log.Fatal(err)
@@ -45,7 +46,6 @@ func readConfig(txtPath string, classConfigs *[]TagClassInfo) {
 	defer file.Close()
 	buf := bufio.NewReader(file)
 
-	//读取配置信息
 LabelReadOptions:
 	for {
 		line, err := buf.ReadString('\n')
@@ -55,7 +55,7 @@ LabelReadOptions:
 			break LabelReadOptions
 		}
 
-		//解析配置key和value
+		// Parse key and value
 		keyvalue := strings.TrimSpace(strings.SplitN(line, "#", 2)[0])
 		key := strings.SplitN(keyvalue, "=", 2)[0]
 		value := strings.SplitN(keyvalue, "=", 2)[1]
@@ -72,6 +72,11 @@ LabelReadOptions:
 		case "prefix_flag":
 			currentClassInfo.prefixFlag = value
 			currentClassInfo.className = value
+		case "maxmail":
+			maxmails, _ := strconv.ParseInt(value, 10, 32)
+			currentClassInfo.MAXMAILS = uint32(maxmails)
+		case "delimiter":
+			currentClassInfo.delimiter = value
 		default:
 			fmt.Println("Unknown: ", key, value)
 		}
@@ -82,7 +87,7 @@ LabelReadOptions:
 	}
 
 LabelStudents:
-	//读取学员名单信息
+	// read name line by line
 	for {
 		line, err := buf.ReadString('\n')
 		line = strings.TrimSpace(line)
@@ -91,7 +96,7 @@ LabelStudents:
 			break LabelStudents
 		}
 
-		//初始化学员列表和违纪列表
+		// Initialize name lists and violated lists
 		currentClassInfo.stuLists = append(currentClassInfo.stuLists, line)
 		currentClassInfo.VIOLATELIST = append(currentClassInfo.VIOLATELIST, line)
 
@@ -104,7 +109,6 @@ LabelStudents:
 	}
 
 	*classConfigs = append(*classConfigs, currentClassInfo)
-	//fmt.Println(txtPath, "done.")
 }
 
 //ReadConfigDir Read configs from config txt files

@@ -19,9 +19,6 @@ import (
 //MailFetchConfig 包含了下载配置信息的结构体遍历
 var MailFetchConfig TagClassInfo
 
-//MAXMAILS 表示遍历邮件的最大数目
-var MAXMAILS uint32 = 40
-
 //RemoveStuName Remove Student's Name from VIOLATELIST
 func removeStuName(stuName string) {
 	for i, item := range MailFetchConfig.VIOLATELIST {
@@ -62,7 +59,7 @@ func downloadAttach(c *client.Client, downloadSet *imap.SeqSet) {
 	// Get the whole message body
 	section := &imap.BodySectionName{}
 	items := []imap.FetchItem{section.FetchItem()}
-
+	log.Println("保存至: ", MailFetchConfig.homeworkPath)
 	messages := make(chan *imap.Message, 10)
 	done := make(chan error, 1)
 	go func() {
@@ -92,7 +89,6 @@ func downloadAttach(c *client.Client, downloadSet *imap.SeqSet) {
 				//保存作业
 				fileBytes, _ := ioutil.ReadAll(p.Body)
 				file, err := os.Create(path.Join(MailFetchConfig.homeworkPath, filename))
-				log.Println(path.Join(MailFetchConfig.homeworkPath, filename))
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -103,7 +99,7 @@ func downloadAttach(c *client.Client, downloadSet *imap.SeqSet) {
 				log.Println("已保存:", filename)
 
 				//移除违纪名单
-				splits := strings.Split(filename, "_")
+				splits := strings.Split(filename, MailFetchConfig.delimiter)
 				if len(splits) == 3 {
 					removeStuName(splits[1])
 				}
@@ -140,9 +136,9 @@ func getMailsSet(client *client.Client) (set *imap.SeqSet) {
 	mbox := client.Mailbox()
 	from := uint32(1)
 	to := mbox.Messages
-	if mbox.Messages > MAXMAILS {
+	if mbox.Messages > MailFetchConfig.MAXMAILS {
 		// We're using unsigned integers here, only substract if the result is > 0
-		from = mbox.Messages - MAXMAILS
+		from = mbox.Messages - MailFetchConfig.MAXMAILS
 	}
 	seqset.AddRange(from, to)
 	return seqset
