@@ -26,7 +26,7 @@ var usageTemplate = `usage:
 		show this
 `
 
-//GetDateRange 获取默认合法作业时间范围
+// Get the default time range according to current time
 func GetDateRange() (startDate time.Time, endDate time.Time) {
 	nowDate := time.Now()
 
@@ -49,7 +49,7 @@ func GetDateRange() (startDate time.Time, endDate time.Time) {
 	return
 }
 
-func setConfigs() bool {
+func prepareConfig() bool {
 	classOptions := ReadConfigDir("./configs")
 
 	dateBegin, dateEnd := GetDateRange()
@@ -119,7 +119,7 @@ func setConfigs() bool {
 	return true
 }
 func main() {
-	if setConfigs() {
+	if prepareConfig() {
 		Run()
 	}
 }
