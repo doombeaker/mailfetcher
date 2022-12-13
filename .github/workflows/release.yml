@@ -17,7 +17,10 @@ jobs:
     - uses: wangyoucao577/go-release-action@v1.34
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        pre_command: export CGO_ENABLED=1
+        overwrite: true
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
         binary_name: mailfetcher
         asset_name: "mailfetcher-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+        extra_files: configs
