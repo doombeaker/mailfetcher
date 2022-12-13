@@ -17,11 +17,12 @@ jobs:
     - name: ABC Install
       uses: lyricwulf/abc@v1.2.0
       with:
-        linux: gcc-mingw-w64
+        linux: gcc-mingw-w64-x86-64 gcc-mingw-w64
+    - run:  dpkg -L gcc-mingw-w64-x86-64|grep x86_64-w64-mingw32-gcc
     - uses: wangyoucao577/go-release-action@v1.34
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        pre_command: export CGO_ENABLED=1;export CC=/etc/alternatives/x86_64-w64-mingw32-gcc
+        pre_command: export CGO_ENABLED=1;export CC=/usr/bin/x86_64-w64-mingw32-gcc-win32
         overwrite: true
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
