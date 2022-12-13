@@ -30,4 +30,4 @@ jobs:
         goarch: ${{ matrix.goarch }}
         binary_name: mailfetcher
         asset_name: "mailfetcher-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
-        extra_files: configs/EXAMPLE.txt
+        extra_files: configs/
