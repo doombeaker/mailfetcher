@@ -1,6 +1,8 @@
 # .github/workflows/release.yaml
 
 on:
+  push:
+    branches: [master]
   release:
     types: [created]
 
@@ -16,13 +18,15 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install MinGW
       uses: egor-tensin/setup-mingw@v2
-    - uses: wangyoucao577/go-release-action@v1.34
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        pre_command: export CGO_ENABLED=1;export CC=/usr/bin/x86_64-w64-mingw32-gcc
-        overwrite: true
-        goos: ${{ matrix.goos }}
-        goarch: ${{ matrix.goarch }}
-        binary_name: mailfetcher
-        asset_name: "mailfetcher-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
-        extra_files: configs/EXAMPLE.txt
+    - run: ls -l /usr/local/bin
+    - run: ls -l /usr/bin
+    #- uses: wangyoucao577/go-release-action@v1.34
+    #  with:
+    #    github_token: ${{ secrets.GITHUB_TOKEN }}
+    #    pre_command: export CGO_ENABLED=1;export CC=/usr/bin/x86_64-w64-mingw32-gcc
+    #    overwrite: true
+    #    goos: ${{ matrix.goos }}
+    #    goarch: ${{ matrix.goarch }}
+    #    binary_name: mailfetcher
+    #    asset_name: "mailfetcher-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+    #    extra_files: configs/EXAMPLE.txt
