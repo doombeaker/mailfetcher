@@ -14,9 +14,7 @@ jobs:
         goarch: [amd64]
     steps:
     - uses: actions/checkout@v3
-    - name: Install cross build gcc
-      run: sudo apt-get -y install gcc-aarch64-linux-gnu
-    - name: Build and release binary
+    - run: sudo apt-get -y install gcc-aarch64-linux-gnu
     - uses: wangyoucao577/go-release-action@v1.34
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
