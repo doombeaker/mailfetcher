@@ -7,22 +7,19 @@ on:
 jobs:
   release-win:
     name: release windows
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         goos: [windows]
         goarch: [amd64]
     steps:
     - uses: actions/checkout@v3
-    - name: ABC Install
-      uses: lyricwulf/abc@v1.2.0
-      with:
-        linux: gcc-mingw-w64-x86-64 gcc-mingw-w64
-    - run:  dpkg -L gcc-mingw-w64-x86-64
+    - name: Install MinGW
+      uses: egor-tensin/setup-mingw@v2
     - uses: wangyoucao577/go-release-action@v1.34
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        pre_command: export CGO_ENABLED=1;export CC=/usr/bin/x86_64-w64-mingw32-gcc-win32
+        pre_command: export CGO_ENABLED=1;
         overwrite: true
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
