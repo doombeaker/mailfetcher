@@ -7,7 +7,7 @@ on:
 jobs:
   release-win:
     name: release windows
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         goos: [windows]
