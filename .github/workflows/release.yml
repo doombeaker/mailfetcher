@@ -5,37 +5,18 @@ on:
     types: [created]
 
 jobs:
-  release-linux:
+  release-win-linux:
     name: release linux
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux]
+        goos: [linux, windows]
         goarch: [amd64]
     steps:
     - uses: actions/checkout@v3
-    - uses: wangyoucao577/go-release-action@v1.34
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        pre_command: export CGO_ENABLED=1
-        overwrite: true
-        goos: ${{ matrix.goos }}
-        goarch: ${{ matrix.goarch }}
-        binary_name: mailfetcher
-        asset_name: "mailfetcher-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
-        extra_files: configs/EXAMPLE.txt
-
-  release-windows:
-    name: release windows
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        goos: [windows]
-        goarch: [amd64]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install GCC
-      uses: egor-tensin/setup-gcc@v1
+    - name: Install cross build gcc
+      run: sudo apt-get -y install gcc-aarch64-linux-gnu
+    - name: Build and release binary
     - uses: wangyoucao577/go-release-action@v1.34
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
