@@ -1,5 +1,8 @@
 # Mailfetcher
 
+[![build](https://github.com/doombeaker/mailfetcher/actions/workflows/go.yml/badge.svg)](https://github.com/doombeaker/mailfetcher/blob/master/.github/workflows/go.yml)
+[![release](https://github.com/doombeaker/mailfetcher/actions/workflows/release.yml/badge.svg)](https://github.com/doombeaker/mailfetcher/blob/master/.github/workflows/release.yml)
+
 Mailfetcher can help you download attchment of mails in batch.
 
 ## How to use
