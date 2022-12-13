@@ -21,3 +21,4 @@ jobs:
         goarch: ${{ matrix.goarch }}
         binary_name: mailfetcher
         asset_name: "mailfetcher-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+        goversion: 1.18
