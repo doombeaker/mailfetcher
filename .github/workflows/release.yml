@@ -19,7 +19,7 @@ jobs:
     - uses: wangyoucao577/go-release-action@v1.34
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        pre_command: export CGO_ENABLED=1;export CC=/usr/local/bin/cc
+        pre_command: export CGO_ENABLED=1;export CC=/usr/bin/x86_64-w64-mingw32-gcc
         overwrite: true
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
