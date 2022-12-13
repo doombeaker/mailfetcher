@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/emersion/go-message/charset"
 	_ "github.com/mattn/go-sqlite3"
 )
 
