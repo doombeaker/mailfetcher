@@ -16,11 +16,6 @@ jobs:
         goarch: [amd64]
     steps:
     - uses: actions/checkout@v3
-    - name: Install MinGW
-      uses: egor-tensin/setup-mingw@v2
-    - run: ls -l /usr/local/bin
-    - run: ls -l /usr/bin
-    - run: /usr/local/bin/cc --version
     - uses: wangyoucao577/go-release-action@v1.34
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -30,4 +25,23 @@ jobs:
         goarch: ${{ matrix.goarch }}
         binary_name: mailfetcher
         asset_name: "mailfetcher-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
-        extra_files: configs/
+        extra_files: configs/ README.md
+  release-linux:
+    name: release linux
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64]
+    steps:
+    - uses: actions/checkout@v3
+    - uses: wangyoucao577/go-release-action@v1.34
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pre_command: export CGO_ENABLED=1;
+        overwrite: true
+        goos: ${{ matrix.goos }}
+        goarch: ${{ matrix.goarch }}
+        binary_name: mailfetcher
+        asset_name: "mailfetcher-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+        extra_files: configs/ README.md
